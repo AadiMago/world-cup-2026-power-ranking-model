@@ -1,0 +1,134 @@
+CREATE TABLE wc_matches AS
+SELECT *
+FROM last10_matches_filtered
+WHERE country IN (
+'Mexico','South Africa','South Korea','Czech Republic',
+'Canada','Bosnia & Herzegovina','Qatar','Switzerland',
+'Brazil','Morocco','Haiti','Scotland',
+'United States','Paraguay','Australia','Turkey',
+'Germany','Curaçao','Ivory Coast','Ecuador',
+'Netherlands','Japan','Sweden','Tunisia',
+'Belgium','Egypt','Iran','New Zealand',
+'Spain','Cape Verde','Saudi Arabia','Uruguay',
+'France','Senegal','Iraq','Norway',
+'Argentina','Algeria','Austria','Jordan',
+'Portugal','DR Congo','Uzbekistan','Colombia',
+'England','Croatia','Ghana','Panama'
+);
+
+UPDATE wc_matches
+SET win = CASE
+    WHEN goals_scored > goals_conceded THEN 3
+    WHEN goals_scored = goals_conceded THEN 1
+    ELSE 0
+END;
+
+CREATE TABLE average_stats AS
+SELECT
+    country,
+    COUNT(*) AS games_played,
+    AVG(goals_scored) AS avg_goals_scored,
+    AVG(goals_conceded) AS avg_goals_conceded,
+    AVG(goals_scored - goals_conceded) AS avg_goal_diff,
+    AVG(win) AS points_per_game
+FROM wc_matches
+GROUP BY country;
+
+ALTER TABLE average_stats ADD COLUMN fifa_rank INTEGER;
+
+UPDATE average_stats
+SET fifa_rank = CASE country
+    WHEN 'Algeria' THEN 28
+    WHEN 'Argentina' THEN 3
+    WHEN 'Australia' THEN 27
+    WHEN 'Austria' THEN 24
+    WHEN 'Belgium' THEN 9
+    WHEN 'Brazil' THEN 6
+    WHEN 'Canada' THEN 30
+    WHEN 'Cape Verde' THEN 69
+    WHEN 'Colombia' THEN 13
+    WHEN 'Croatia' THEN 11
+    WHEN 'Curaçao' THEN 82
+    WHEN 'Czech Republic' THEN 41
+    WHEN 'DR Congo' THEN 46
+    WHEN 'Ecuador' THEN 23
+    WHEN 'Egypt' THEN 29
+    WHEN 'England' THEN 4
+    WHEN 'France' THEN 1
+    WHEN 'Germany' THEN 10
+    WHEN 'Ghana' THEN 74
+    WHEN 'Haiti' THEN 83
+    WHEN 'Iran' THEN 21
+    WHEN 'Iraq' THEN 57
+    WHEN 'Ivory Coast' THEN 34
+    WHEN 'Japan' THEN 18
+    WHEN 'Jordan' THEN 63
+    WHEN 'Mexico' THEN 15
+    WHEN 'Morocco' THEN 8
+    WHEN 'Netherlands' THEN 7
+    WHEN 'New Zealand' THEN 85
+    WHEN 'Norway' THEN 31
+    WHEN 'Panama' THEN 33
+    WHEN 'Paraguay' THEN 40
+    WHEN 'Portugal' THEN 5
+    WHEN 'Qatar' THEN 55
+    WHEN 'Saudi Arabia' THEN 61
+    WHEN 'Scotland' THEN 43
+    WHEN 'Senegal' THEN 14
+    WHEN 'South Africa' THEN 60
+    WHEN 'South Korea' THEN 25
+    WHEN 'Spain' THEN 2
+    WHEN 'Sweden' THEN 38
+    WHEN 'Switzerland' THEN 19
+    WHEN 'Tunisia' THEN 44
+    WHEN 'Turkey' THEN 22
+    WHEN 'United States' THEN 16
+    WHEN 'Uruguay' THEN 17
+    WHEN 'Uzbekistan' THEN 50
+    ELSE fifa_rank
+END;
+
+ALTER TABLE average_stats ADD COLUMN world_cup_appearances INTEGER;
+ALTER TABLE average_stats ADD COLUMN world_cup_medals INTEGER;
+
+ALTER TABLE average_stats ADD COLUMN continental_titles_10y INTEGER;
+
+UPDATE average_stats
+SET continental_titles_10y = CASE country
+    WHEN 'Argentina' THEN 2
+    WHEN 'Brazil' THEN 1
+    WHEN 'France' THEN 1
+    WHEN 'Germany' THEN 1
+    WHEN 'Portugal' THEN 3
+    WHEN 'Spain' THEN 2
+    WHEN 'Mexico' THEN 3
+    WHEN 'United States' THEN 5
+    WHEN 'Qatar' THEN 2
+    WHEN 'Senegal' THEN 1
+    WHEN 'Algeria' THEN 1
+    WHEN 'Ivory Coast' THEN 1
+    WHEN 'New Zealand' THEN 1
+    ELSE 0
+END;
+
+ALTER TABLE average_stats ADD COLUMN power_score REAL;
+
+UPDATE average_stats
+SET power_score =
+    0.10 * avg_goal_diff +
+    0.35 * (points_per_game / 3.0) +
+    0.35 * ((100 - fifa_rank)/100.0) * ((100 - fifa_rank)/100.0) +
+    0.05 * world_cup_medals +
+    0.05 * world_cup_appearances +
+    0.10 * continental_titles_10y;
+
+ALTER TABLE average_stats ADD COLUMN team_tier TEXT;
+
+UPDATE average_stats
+SET team_tier = CASE 
+    WHEN power_score >= 2 THEN 'Favourite'
+    WHEN power_score >= 1.4 THEN 'Contender'
+    WHEN power_score >= 0.8 THEN 'Dark Horse'
+    WHEN power_score >= 0.4 THEN 'Unlikely'
+    ELSE 'Highly Improbable'
+END;
