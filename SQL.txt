@@ -122,7 +122,7 @@ SET power_score =
     0.05 * world_cup_appearances +
     0.10 * continental_titles_10y;
 
-ALTER TABLE average_stats ADD COLUMN team_tier TEXT;
+ALTER TABLE average_stats ADD COLUMN contender_status TEXT;
 
 UPDATE average_stats
 SET team_tier = CASE 
